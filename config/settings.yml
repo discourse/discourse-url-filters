@@ -1,0 +1,4 @@
+plugins:
+  url_filters_enabled:
+    default: true
+    client: false
