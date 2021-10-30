@@ -30,11 +30,23 @@ after_initialize do
       if categories_param = topic_query.options[:categories]
         categories = categories_param.split(',')
         category_ids = Category.where(slug: categories).pluck(:id)
-        #results = results.where('topics.category_id = ?', category_ids)
-        puts "CATEGORIES: #{category_ids}"
 
         results = results.where(<<~SQL, category_ids: category_ids)
         topics.category_id IN (:category_ids)
+        SQL
+      end
+      results
+    end
+
+    # Exclude Categories
+    TopicQuery.add_custom_filter(:exclude_categories) do |results, topic_query|
+      if categories_param = topic_query.options[:exclude_categories]
+        categories = categories_param.split(',')
+        category_ids = Category.where(slug: categories).pluck(:id)
+
+        results = results.where(<<~SQL, category_ids: category_ids)
+        topics.category_id NOT IN (:category_ids)
+        AND categories.parent_category_id NOT IN (:category_ids)
         SQL
       end
       results
@@ -47,10 +59,27 @@ after_initialize do
       if tags_param = topic_query.options[:include_tags]
         tags = tags_param.split(',')
         tag_ids = Tag.where(name: tags).pluck(:id)
-        puts "TAGS: #{tag_ids}"
 
         results = results.where(<<~SQL, tag_ids: tag_ids)
         topics.id IN (
+          SELECT topic_tags.topic_id
+          FROM topic_tags
+          INNER JOIN tags ON tags.id = topic_tags.tag_id
+          WHERE tags.id IN (:tag_ids)
+        )
+        SQL
+      end
+      results
+    end
+
+    # Exclude Tags
+    TopicQuery.add_custom_filter(:exclude_tags) do |results, topic_query|
+      if tags_param = topic_query.options[:exclude_tags]
+        tags = tags_param.split(',')
+        tag_ids = Tag.where(name: tags).pluck(:id)
+
+        results = results.where(<<~SQL, tag_ids: tag_ids)
+        topics.id NOT IN (
           SELECT topic_tags.topic_id
           FROM topic_tags
           INNER JOIN tags ON tags.id = topic_tags.tag_id
@@ -86,13 +115,14 @@ after_initialize do
       if reply_from_param = topic_query.options[:reply_from]
         group = Group.find_by(name: reply_from_param)
         if group
-          results = results.where(<<~SQL, group_id: group.id)
+          results = results.where(<<~SQL, group_id: group.id, post_type: Post.types[:regular])
           topics.id IN (
             SELECT posts.topic_id
             FROM posts
             INNER JOIN group_users gu ON gu.user_id = posts.user_id
             WHERE gu.group_id = :group_id
             AND posts.post_number > 1
+            AND posts.post_type = :post_type
           )
           SQL
         end
@@ -105,13 +135,14 @@ after_initialize do
       if no_reply_from_param = topic_query.options[:no_reply_from]
         group = Group.find_by(name: no_reply_from_param)
         if group
-          results = results.where(<<~SQL, group_id: group.id)
+          results = results.where(<<~SQL, group_id: group.id, post_type: Post.types[:regular])
           topics.id NOT IN (
             SELECT posts.topic_id
             FROM posts
             INNER JOIN group_users gu ON gu.user_id = posts.user_id
             WHERE gu.group_id = :group_id
             AND posts.post_number > 1
+            AND posts.post_type = :post_type
           )
           SQL
         end
