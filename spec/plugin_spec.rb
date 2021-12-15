@@ -36,6 +36,12 @@ describe 'plugin' do
         expect(query.topics).to contain_exactly(@topic2)
       end
 
+      it 'does not filter for malformed date' do
+        before_date = 'asdf'
+        query = TopicQuery.new(@user, { before_date: before_date }).list_latest
+        expect(query.topics.length).to eq(3)
+      end
+
     end
   end
 end
