@@ -9,6 +9,7 @@
 enabled_site_setting :url_filters_enabled
 
 PLUGIN_NAME = "discourse_url_filters".freeze
+BASIC_DATE_REGEX = /\d{4}-\d{2}-\d{2}/
 
 after_initialize do
 
@@ -20,6 +21,34 @@ after_initialize do
       if after = topic_query.options[:after]
         if (after = after.to_i) > 0
           results = results.where('topics.created_at > ?', after.days.ago)
+        end
+      end
+      results
+    end
+
+    # After Date (yyyy-mm-dd)
+    TopicQuery.add_custom_filter(:after_date) do |results, topic_query|
+      if after_date = topic_query.options[:after_date]
+        if BASIC_DATE_REGEX.match(after_date)
+          begin
+            parsed_after_date = Date.parse(after_date)
+            results = results.where('topics.created_at > ?', parsed_after_date)
+          rescue Date::Error
+          end
+        end
+      end
+      results
+    end
+
+    # Before Date (yyyy-mm-dd)
+    TopicQuery.add_custom_filter(:before_date) do |results, topic_query|
+      if before_date = topic_query.options[:before_date]
+        if BASIC_DATE_REGEX.match(before_date)
+          begin
+            parsed_before_date = Date.parse(before_date)
+            results = results.where('topics.created_at < ?', parsed_before_date)
+          rescue Date::Error
+          end
         end
       end
       results
