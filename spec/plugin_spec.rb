@@ -43,4 +43,3 @@ describe 'plugin' do
     end
   end
 end
-
