@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-describe 'plugin' do
+describe 'discourse-url-filters' do
   before { SiteSetting.url_filters_enabled = true }
 
   describe 'Topic Queries' do
@@ -39,7 +39,6 @@ describe 'plugin' do
         query = TopicQuery.new(user, { before_date: before_date }).list_latest
         expect(query.topics.length).to eq(3)
       end
-
     end
   end
 end
