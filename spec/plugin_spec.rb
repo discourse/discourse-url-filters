@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-describe 'discourse-url-filters' do
+describe Plugin::Instance do
   before { SiteSetting.url_filters_enabled = true }
 
   describe 'Topic Queries' do
