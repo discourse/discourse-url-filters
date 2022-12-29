@@ -13,13 +13,13 @@ PLUGIN_NAME = "discourse_url_filters"
 BASIC_DATE_REGEX = /\d{4}-\d{2}-\d{2}/
 
 after_initialize do
-  require_dependency 'topic_query'
+  require_dependency "topic_query"
 
   # After
   TopicQuery.add_custom_filter(:after) do |results, topic_query|
     if after = topic_query.options[:after]
       if (after = after.to_i) > 0
-        results = results.where('topics.created_at > ?', after.days.ago)
+        results = results.where("topics.created_at > ?", after.days.ago)
       end
     end
     results
@@ -31,7 +31,7 @@ after_initialize do
       if BASIC_DATE_REGEX.match(after_date)
         begin
           parsed_after_date = Date.parse(after_date)
-          results = results.where('topics.created_at > ?', parsed_after_date)
+          results = results.where("topics.created_at > ?", parsed_after_date)
         rescue Date::Error
         end
       end
@@ -45,7 +45,7 @@ after_initialize do
       if BASIC_DATE_REGEX.match(before_date)
         begin
           parsed_before_date = Date.parse(before_date)
-          results = results.where('topics.created_at < ?', parsed_before_date)
+          results = results.where("topics.created_at < ?", parsed_before_date)
         rescue Date::Error
         end
       end
@@ -56,7 +56,7 @@ after_initialize do
   # Categories
   TopicQuery.add_custom_filter(:categories) do |results, topic_query|
     if categories_param = topic_query.options[:categories]
-      categories = categories_param.split(',')
+      categories = categories_param.split(",")
       category_ids = Category.where(slug: categories).pluck(:id)
 
       results = results.where(<<~SQL, category_ids: category_ids)
@@ -69,7 +69,7 @@ after_initialize do
   # Exclude Categories
   TopicQuery.add_custom_filter(:exclude_categories) do |results, topic_query|
     if categories_param = topic_query.options[:exclude_categories]
-      categories = categories_param.split(',')
+      categories = categories_param.split(",")
       category_ids = Category.where(slug: categories).pluck(:id)
 
       results = results.where(<<~SQL, category_ids: category_ids)
@@ -85,7 +85,7 @@ after_initialize do
   # the existing tags query param
   TopicQuery.add_custom_filter(:include_tags) do |results, topic_query|
     if tags_param = topic_query.options[:include_tags]
-      tags = tags_param.split(',')
+      tags = tags_param.split(",")
       tag_ids = Tag.where(name: tags).pluck(:id)
 
       results = results.where(<<~SQL, tag_ids: tag_ids)
@@ -103,7 +103,7 @@ after_initialize do
   # Exclude Tags
   TopicQuery.add_custom_filter(:exclude_tags) do |results, topic_query|
     if tags_param = topic_query.options[:exclude_tags]
-      tags = tags_param.split(',')
+      tags = tags_param.split(",")
       tag_ids = Tag.where(name: tags).pluck(:id)
 
       results = results.where(<<~SQL, tag_ids: tag_ids)
@@ -123,8 +123,7 @@ after_initialize do
   TopicQuery.add_custom_filter(:topic_author) do |results, topic_query|
     if topic_author_param = topic_query.options[:topic_author]
       group = Group.find_by(name: topic_author_param)
-      if group
-        results = results.where(<<~SQL, group_id: group.id)
+      results = results.where(<<~SQL, group_id: group.id) if group
         topics.id IN (
           SELECT posts.topic_id
           FROM posts
@@ -133,7 +132,6 @@ after_initialize do
           AND posts.post_number = 1
         )
         SQL
-      end
     end
     results
   end
@@ -142,8 +140,7 @@ after_initialize do
   TopicQuery.add_custom_filter(:reply_from) do |results, topic_query|
     if reply_from_param = topic_query.options[:reply_from]
       group = Group.find_by(name: reply_from_param)
-      if group
-        results = results.where(<<~SQL, group_id: group.id, post_type: Post.types[:regular])
+      results = results.where(<<~SQL, group_id: group.id, post_type: Post.types[:regular]) if group
         topics.id IN (
           SELECT posts.topic_id
           FROM posts
@@ -153,7 +150,6 @@ after_initialize do
           AND posts.post_type = :post_type
         )
         SQL
-      end
     end
     results
   end
@@ -162,8 +158,7 @@ after_initialize do
   TopicQuery.add_custom_filter(:no_reply_from) do |results, topic_query|
     if no_reply_from_param = topic_query.options[:no_reply_from]
       group = Group.find_by(name: no_reply_from_param)
-      if group
-        results = results.where(<<~SQL, group_id: group.id, post_type: Post.types[:regular])
+      results = results.where(<<~SQL, group_id: group.id, post_type: Post.types[:regular]) if group
         topics.id NOT IN (
           SELECT posts.topic_id
           FROM posts
@@ -173,7 +168,6 @@ after_initialize do
           AND posts.post_type = :post_type
         )
         SQL
-      end
     end
     results
   end
