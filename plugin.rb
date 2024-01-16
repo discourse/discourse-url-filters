@@ -5,7 +5,6 @@
 # version: 0.1
 # authors: Blake Erickson
 # url: https://github.com/discourse/discourse-url-filters
-# transpile_js: true
 
 enabled_site_setting :url_filters_enabled
 
