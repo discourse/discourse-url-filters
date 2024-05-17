@@ -10,7 +10,7 @@ describe Plugin::Instance do
       fab!(:topic1) { Fabricate(:topic, created_at: 10.days.ago) }
       fab!(:topic2) { Fabricate(:topic, created_at: 8.days.ago) }
       fab!(:topic3) { Fabricate(:topic, created_at: 6.days.ago) }
-      fab!(:user) { Fabricate(:user) }
+      fab!(:user)
 
       it "only shows topics after specified date" do
         after_date = 9.days.ago.strftime("%Y-%m-%d")

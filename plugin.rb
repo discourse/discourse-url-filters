@@ -8,11 +8,10 @@
 
 enabled_site_setting :url_filters_enabled
 
-PLUGIN_NAME = "discourse_url_filters"
-BASIC_DATE_REGEX = /\d{4}-\d{2}-\d{2}/
-
 after_initialize do
-  require_dependency "topic_query"
+  module ::DiscourseUrlFilters
+    BASIC_DATE_REGEX = /\d{4}-\d{2}-\d{2}/
+  end
 
   # After
   TopicQuery.add_custom_filter(:after) do |results, topic_query|
@@ -27,7 +26,7 @@ after_initialize do
   # After Date (yyyy-mm-dd)
   TopicQuery.add_custom_filter(:after_date) do |results, topic_query|
     if after_date = topic_query.options[:after_date]
-      if BASIC_DATE_REGEX.match(after_date)
+      if DiscourseUrlFilters::BASIC_DATE_REGEX.match(after_date)
         begin
           parsed_after_date = Date.parse(after_date)
           results = results.where("topics.created_at > ?", parsed_after_date)
@@ -41,7 +40,7 @@ after_initialize do
   # Before Date (yyyy-mm-dd)
   TopicQuery.add_custom_filter(:before_date) do |results, topic_query|
     if before_date = topic_query.options[:before_date]
-      if BASIC_DATE_REGEX.match(before_date)
+      if DiscourseUrlFilters::BASIC_DATE_REGEX.match(before_date)
         begin
           parsed_before_date = Date.parse(before_date)
           results = results.where("topics.created_at < ?", parsed_before_date)
