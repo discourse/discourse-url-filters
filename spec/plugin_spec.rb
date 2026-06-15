@@ -39,5 +39,62 @@ describe Plugin::Instance do
         expect(query.topics.length).to eq(3)
       end
     end
+
+    describe "group member filters" do
+      fab!(:viewer, :user)
+      fab!(:group_member, :user)
+      fab!(:other_user, :user)
+
+      fab!(:hidden_members_group) do
+        Fabricate(
+          :group,
+          name: "hidden_members",
+          visibility_level: Group.visibility_levels[:public],
+          members_visibility_level: Group.visibility_levels[:owners],
+        )
+      end
+
+      fab!(:member_topic) do
+        Fabricate(:topic, user: group_member, title: "Topic by hidden group member")
+      end
+
+      fab!(:member_topic_op) do
+        Fabricate(:post, topic: member_topic, user: group_member, post_number: 1)
+      end
+
+      fab!(:reply_topic) do
+        Fabricate(:topic, user: other_user, title: "Topic with hidden group reply")
+      end
+
+      fab!(:reply_topic_op) do
+        Fabricate(:post, topic: reply_topic, user: other_user, post_number: 1)
+      end
+
+      fab!(:member_reply) do
+        Fabricate(:post, topic: reply_topic, user: group_member, post_number: 2)
+      end
+
+      fab!(:unrelated_topic) { Fabricate(:topic, user: other_user, title: "Unrelated topic") }
+
+      fab!(:unrelated_topic_op) do
+        Fabricate(:post, topic: unrelated_topic, user: other_user, post_number: 1)
+      end
+
+      before { hidden_members_group.add(group_member) }
+
+      def filtered_topic_ids(options)
+        TopicQuery.new(viewer, options).list_latest.topics.map(&:id)
+      end
+
+      it "respects hidden group member visibility", :aggregate_failures do
+        expect(filtered_topic_ids(topic_author: hidden_members_group.name)).to be_empty
+        expect(filtered_topic_ids(reply_from: hidden_members_group.name)).to be_empty
+        expect(filtered_topic_ids(no_reply_from: hidden_members_group.name)).to contain_exactly(
+          member_topic.id,
+          reply_topic.id,
+          unrelated_topic.id,
+        )
+      end
+    end
   end
 end
