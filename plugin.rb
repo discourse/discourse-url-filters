@@ -11,6 +11,10 @@ enabled_site_setting :url_filters_enabled
 after_initialize do
   module ::DiscourseUrlFilters
     BASIC_DATE_REGEX = /\d{4}-\d{2}-\d{2}/
+
+    def self.group_with_visible_members(name, user)
+      Group.visible_groups(user).members_visible_groups(user).find_by(name: name)
+    end
   end
 
   # After
@@ -120,16 +124,20 @@ after_initialize do
   # Filter by topics where the user is a member of the specified group
   TopicQuery.add_custom_filter(:topic_author) do |results, topic_query|
     if topic_author_param = topic_query.options[:topic_author]
-      group = Group.find_by(name: topic_author_param)
-      results = results.where(<<~SQL, group_id: group.id) if group
-        topics.id IN (
-          SELECT posts.topic_id
-          FROM posts
-          INNER JOIN group_users gu ON gu.user_id = posts.user_id
-          WHERE gu.group_id = :group_id
-          AND posts.post_number = 1
-        )
-        SQL
+      group = DiscourseUrlFilters.group_with_visible_members(topic_author_param, topic_query.user)
+      if group
+        results = results.where(<<~SQL, group_id: group.id)
+          topics.id IN (
+            SELECT posts.topic_id
+            FROM posts
+            INNER JOIN group_users gu ON gu.user_id = posts.user_id
+            WHERE gu.group_id = :group_id
+            AND posts.post_number = 1
+          )
+          SQL
+      else
+        results = results.none
+      end
     end
     results
   end
@@ -137,17 +145,21 @@ after_initialize do
   # Has Reply From
   TopicQuery.add_custom_filter(:reply_from) do |results, topic_query|
     if reply_from_param = topic_query.options[:reply_from]
-      group = Group.find_by(name: reply_from_param)
-      results = results.where(<<~SQL, group_id: group.id, post_type: Post.types[:regular]) if group
-        topics.id IN (
-          SELECT posts.topic_id
-          FROM posts
-          INNER JOIN group_users gu ON gu.user_id = posts.user_id
-          WHERE gu.group_id = :group_id
-          AND posts.post_number > 1
-          AND posts.post_type = :post_type
-        )
-        SQL
+      group = DiscourseUrlFilters.group_with_visible_members(reply_from_param, topic_query.user)
+      if group
+        results = results.where(<<~SQL, group_id: group.id, post_type: Post.types[:regular])
+          topics.id IN (
+            SELECT posts.topic_id
+            FROM posts
+            INNER JOIN group_users gu ON gu.user_id = posts.user_id
+            WHERE gu.group_id = :group_id
+            AND posts.post_number > 1
+            AND posts.post_type = :post_type
+          )
+          SQL
+      else
+        results = results.none
+      end
     end
     results
   end
@@ -155,7 +167,7 @@ after_initialize do
   # No Reply From
   TopicQuery.add_custom_filter(:no_reply_from) do |results, topic_query|
     if no_reply_from_param = topic_query.options[:no_reply_from]
-      group = Group.find_by(name: no_reply_from_param)
+      group = DiscourseUrlFilters.group_with_visible_members(no_reply_from_param, topic_query.user)
       results = results.where(<<~SQL, group_id: group.id, post_type: Post.types[:regular]) if group
         topics.id NOT IN (
           SELECT posts.topic_id
