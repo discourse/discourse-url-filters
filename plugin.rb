@@ -88,16 +88,10 @@ after_initialize do
   TopicQuery.add_custom_filter(:include_tags) do |results, topic_query|
     if tags_param = topic_query.options[:include_tags]
       tags = tags_param.split(",")
-      tag_ids = Tag.where(name: tags).pluck(:id)
+      tag_ids = Tag.visible(topic_query.guardian).where(name: tags).pluck(:id)
+      topic_ids = TopicTag.where(tag_id: tag_ids).select(:topic_id)
 
-      results = results.where(<<~SQL, tag_ids: tag_ids)
-      topics.id IN (
-        SELECT topic_tags.topic_id
-        FROM topic_tags
-        INNER JOIN tags ON tags.id = topic_tags.tag_id
-        WHERE tags.id IN (:tag_ids)
-      )
-      SQL
+      results = tag_ids.empty? ? results.none : results.where(id: topic_ids)
     end
     results
   end
@@ -106,16 +100,12 @@ after_initialize do
   TopicQuery.add_custom_filter(:exclude_tags) do |results, topic_query|
     if tags_param = topic_query.options[:exclude_tags]
       tags = tags_param.split(",")
-      tag_ids = Tag.where(name: tags).pluck(:id)
+      tag_ids = Tag.visible(topic_query.guardian).where(name: tags).pluck(:id)
 
-      results = results.where(<<~SQL, tag_ids: tag_ids)
-      topics.id NOT IN (
-        SELECT topic_tags.topic_id
-        FROM topic_tags
-        INNER JOIN tags ON tags.id = topic_tags.tag_id
-        WHERE tags.id IN (:tag_ids)
-      )
-      SQL
+      if tag_ids.present?
+        topic_ids = TopicTag.where(tag_id: tag_ids).select(:topic_id)
+        results = results.where.not(id: topic_ids)
+      end
     end
     results
   end
