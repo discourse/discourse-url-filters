@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
 describe Plugin::Instance do
-  before do
-    SiteSetting.url_filters_enabled = true
-    SiteSetting.tagging_enabled = true
-  end
+  before { SiteSetting.url_filters_enabled = true }
 
   describe "Topic Queries" do
     describe "after_or_before_date" do
