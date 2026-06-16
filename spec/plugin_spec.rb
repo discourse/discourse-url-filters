@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 describe Plugin::Instance do
-  before { SiteSetting.url_filters_enabled = true }
+  before do
+    SiteSetting.url_filters_enabled = true
+    SiteSetting.tagging_enabled = true
+  end
 
   describe "Topic Queries" do
     describe "after_or_before_date" do
@@ -37,6 +40,26 @@ describe Plugin::Instance do
         before_date = "asdf"
         query = TopicQuery.new(user, { before_date: before_date }).list_latest
         expect(query.topics.length).to eq(3)
+      end
+    end
+
+    describe "hidden tag filters" do
+      fab!(:user)
+      fab!(:hidden_tag) { Fabricate(:tag, name: "private-tag") }
+      fab!(:topic_with_hidden_tag) { Fabricate(:topic, tags: [hidden_tag]) }
+      fab!(:topic_without_hidden_tag, :topic)
+
+      before { Fabricate(:tag_group, permissions: { "staff" => 1 }, tag_names: [hidden_tag.name]) }
+
+      it "does not reveal hidden tag associations", :aggregate_failures do
+        include_query = TopicQuery.new(user, include_tags: hidden_tag.name).list_latest
+        expect(include_query.topics).to be_empty
+
+        exclude_query = TopicQuery.new(user, exclude_tags: hidden_tag.name).list_latest
+        expect(exclude_query.topics).to contain_exactly(
+          topic_with_hidden_tag,
+          topic_without_hidden_tag,
+        )
       end
     end
 
