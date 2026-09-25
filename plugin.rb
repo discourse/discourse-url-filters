@@ -72,12 +72,20 @@ after_initialize do
   TopicQuery.add_custom_filter(:exclude_categories) do |results, topic_query|
     if categories_param = topic_query.options[:exclude_categories]
       categories = categories_param.split(",")
-      category_ids = Category.where(slug: categories).pluck(:id)
+      category_ids =
+        Category
+          .where(slug: categories)
+          .pluck(:id)
+          .flat_map { |category_id| Category.subcategory_ids(category_id) }
+          .uniq
 
-      results = results.where(<<~SQL, category_ids: category_ids)
-      topics.category_id NOT IN (:category_ids)
-      AND categories.parent_category_id NOT IN (:category_ids)
-      SQL
+      if category_ids.present?
+        results =
+          results.where(
+            "topics.category_id IS NULL OR topics.category_id NOT IN (:category_ids)",
+            category_ids: category_ids,
+          )
+      end
     end
     results
   end
